@@ -1,6 +1,5 @@
 package dev.sunshinemobile
 
-import android.util.Xml
 import java.io.BufferedReader
 import java.io.InputStreamReader
 import java.net.InetAddress
@@ -65,6 +64,9 @@ class GameStreamHttpServer(
         return "<?xml version=\"1.0\" encoding=\"utf-8\"?>" +
             "<root status_code=\"200\" status_message=\"OK\">" +
             "<hostname>$safeName</hostname><uniqueid>$safeId</uniqueid>" +
+            "<appversion>7.1.431.-1</appversion><GfeVersion>3.23.0.74</GfeVersion>" +
+            "<HttpsPort>47984</HttpsPort><ExternalPort>47989</ExternalPort>" +
+            "<ServerCodecModeSupport>3</ServerCodecModeSupport>" +
             "<PairStatus>0</PairStatus><currentgame>0</currentgame>" +
             "<state>SUNSHINE_MOBILE_INCOMPLETE</state>" +
             "</root>"
