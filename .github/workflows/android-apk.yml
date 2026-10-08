@@ -11,8 +11,6 @@ concurrency:
 jobs:
   build:
     runs-on: ubuntu-24.04
-    env:
-      SUNSHINE_DEBUG_KEYSTORE: ${{ runner.temp }}/sunshine-debug.keystore
     steps:
       - uses: actions/checkout@v4
         with:
@@ -24,6 +22,7 @@ jobs:
       - name: Configure Android SDK
         run: |
           echo "ANDROID_HOME=${ANDROID_HOME:-$ANDROID_SDK_ROOT}" >> "$GITHUB_ENV"
+          echo "SUNSHINE_DEBUG_KEYSTORE=$RUNNER_TEMP/sunshine-debug.keystore" >> "$GITHUB_ENV"
           "${ANDROID_HOME:-$ANDROID_SDK_ROOT}/cmdline-tools/latest/bin/sdkmanager" --licenses < /dev/null || true
           "${ANDROID_HOME:-$ANDROID_SDK_ROOT}/cmdline-tools/latest/bin/sdkmanager" 'platforms;android-35' 'build-tools;35.0.0' 'ndk;27.2.12479018' 'cmake;3.22.1'
       - uses: gradle/actions/setup-gradle@v4
@@ -32,7 +31,7 @@ jobs:
       - name: Retain debug APK signing identity
         uses: actions/cache@v4
         with:
-          path: ${{ env.SUNSHINE_DEBUG_KEYSTORE }}
+          path: ${{ runner.temp }}/sunshine-debug.keystore
           key: sunshine-mobile-debug-signing-v2
       - name: Prepare explicit debug signing identity
         run: |
