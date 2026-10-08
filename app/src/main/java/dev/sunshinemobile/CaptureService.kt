@@ -11,6 +11,7 @@ import android.os.*
 import android.view.Surface
 
 class CaptureService : Service() {
+ private val videoPipeline = EncodedVideoPipeline()
  private var projection: MediaProjection? = null
  private var codec: MediaCodec? = null
  private var surface: Surface? = null
@@ -47,7 +48,13 @@ class CaptureService : Service() {
     while(running.get()) {
      try {
       val index = codec?.dequeueOutputBuffer(info,10_000) ?: -1
-      if (index >= 0) codec?.releaseOutputBuffer(index,false) // No streaming transport yet.
+      if (index >= 0) {
+       val encoder = codec ?: break
+       try { encoder.getOutputBuffer(index)?.let { videoPipeline.onEncodedBuffer(it, info) } }
+       finally { encoder.releaseOutputBuffer(index,false) }
+      } else if (index == MediaCodec.INFO_OUTPUT_FORMAT_CHANGED) {
+       codec?.outputFormat?.let { videoPipeline.onFormatChanged(it) }
+      }
      } catch (_: Exception) { break }
     }
    }.apply { start() }
