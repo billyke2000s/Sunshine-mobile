@@ -31,3 +31,25 @@ jobs:
           name: SunshineMobile-debug-apk
           path: app/build/outputs/apk/debug/*.apk
           if-no-files-found: error
+
+  protocol:
+    runs-on: ubuntu-24.04
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          submodules: recursive
+      - uses: actions/setup-java@v5
+        with:
+          distribution: temurin
+          java-version: '17'
+      - name: Install compatibility test dependencies
+        run: sudo apt-get update && sudo apt-get install -y cmake libssl-dev libopus-dev ffmpeg python3-cryptography
+      - name: Test production host against upstream Moonlight
+        run: tools/protocol-test/run.sh
+      - uses: actions/upload-artifact@v4
+        if: always()
+        with:
+          name: protocol-evidence
+          path: |
+            build/protocol-test/host.log
+            build/protocol-test/received-*.h264

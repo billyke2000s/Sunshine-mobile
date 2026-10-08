@@ -14,17 +14,19 @@ static jbyteArray bytes(JNIEnv* env,const uint8_t* p,size_t n) {
 }
 extern "C" JNIEXPORT jlong JNICALL Java_dev_sunshinemobile_protocol_Native_controlCreate(JNIEnv* e,jclass,jstring ip,jint port,jint data) {
     std::call_once(init,[]{enet_initialize(); reed_solomon_init();});
-    auto c=std::make_unique<Control>(); ENetAddress bind{}; bind.port=port;
+    auto c=std::make_unique<Control>(); ENetAddress bind{};
     if(enet_address_set_host(&bind,"0.0.0.0")!=0) return 0;
+    enet_address_set_port(&bind,port);
     const char* s=e->GetStringUTFChars(ip,nullptr); int r=enet_address_set_host(&c->expected,s); e->ReleaseStringUTFChars(ip,s); if(r!=0) return 0;
-    c->data=data; c->host=enet_host_create(&bind,1,16,0,0); if(!c->host) return 0;
+    c->data=data; c->host=enet_host_create(AF_INET,&bind,1,16,0,0); if(!c->host) return 0;
     return reinterpret_cast<jlong>(c.release());
 }
 extern "C" JNIEXPORT jbyteArray JNICALL Java_dev_sunshinemobile_protocol_Native_controlPoll(JNIEnv* e,jclass,jlong h,jint ms) {
     auto c=reinterpret_cast<Control*>(h); ENetEvent event{};
     if(enet_host_service(c->host,&event,ms)<=0) return nullptr;
     if(event.type==ENET_EVENT_TYPE_CONNECT) {
-        if(std::memcmp(&event.peer->address.host,&c->expected.host,sizeof(c->expected.host))!=0 || event.data!=c->data || c->peer) { enet_peer_reset(event.peer); return nullptr; }
+        ENetAddress incoming=event.peer->address; enet_address_set_port(&incoming,0);
+        if(!enet_address_equal(&incoming,&c->expected) || event.data!=c->data || c->peer) { enet_peer_reset(event.peer); return nullptr; }
         c->peer=event.peer; enet_peer_timeout(c->peer,0,5000,10000); uint8_t b=1; return bytes(e,&b,1);
     }
     if(event.type==ENET_EVENT_TYPE_DISCONNECT) { if(event.peer==c->peer) { c->peer=nullptr; uint8_t b=2; return bytes(e,&b,1); } }
