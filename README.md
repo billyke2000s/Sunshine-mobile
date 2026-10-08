@@ -11,7 +11,7 @@ Android screen-sharing GameStream host for a OnePlus 13R and an unmodified Moonl
 5. Launch **Phone screen** in Moonlight. Use H.264, SDR, stereo, and a resolution at or below 1920×1080, at up to 60 FPS. The host uses the actual RTSP-negotiated dimensions, rate and bitrate.
 6. Disconnect Moonlight to release the encoder and audio capture. The host remains available for a fresh connection without requiring another projection token. Stop the host from the app or notification to release projection and all listeners.
 
-The app displays its current LAN address, discovery state and startup errors. **Copy diagnostics** records the failing stage without PINs or keys. See [Android restrictions and host behavior](docs/ANDROID_COMPATIBILITY.md) for the researched platform/OEM boundaries. Earlier APKs have a different debug signing key and must be uninstalled before installing 1.0.2; remove the old host in Moonlight and pair again. Subsequent CI builds retain the signing key.
+The app displays its current LAN address, discovery state and startup errors. **Copy diagnostics** records the failing stage without PINs or keys. See [Android restrictions and host behavior](docs/ANDROID_COMPATIBILITY.md) for the researched platform/OEM boundaries. APKs before 1.0.2 have a different debug signing key and must be uninstalled; remove the old host in Moonlight and pair again. Builds from 1.0.2 onward retain the signing key. The host selects a physical Wi-Fi/Ethernet IPv4 network for sockets and mDNS, shows that network’s address, and restarts listeners/discovery when it changes. VPN lockdown can still block direct LAN traffic.
 
 This is screen mirroring. Remote phone touch/gamepad injection is not advertised. Android restricts capture of protected screens and audio from apps that disallow playback capture. Screen-sharing permission must be granted again after the service stops or the process dies; Android 14+ projection tokens cannot be silently reused.
 
@@ -30,7 +30,7 @@ All session control requires a paired certificate or the authenticated session k
 
 ## Validation
 
-The workflow compiles the arm64 APK, runs Android lint and JVM tests, exercises startup/consent/mDNS/Keystore/mutual TLS/capture/restart on API 35 and 36 emulators, and independently runs the **same production Java protocol classes and JNI transport** on Linux with synthetic capture against unmodified upstream Moonlight code.
+The workflow compiles the arm64 APK, runs Android lint and JVM tests, exercises startup/consent/mDNS registration and independent browse/resolve/HTTP connection/Keystore/mutual TLS/capture/restart on API 35 and 36 emulators, and independently runs the **same production Java protocol classes and JNI transport** on Linux with synthetic capture against unmodified upstream Moonlight code.
 
 The compatibility job checks wrong PIN rejection, out-of-order pairing, unauthenticated launch rejection, missing TLS certificate rejection, complete pairing, certificate persistence across a host-process restart, authenticated launch, encrypted RTSP/ENet negotiation, encrypted and plaintext media, H.264 depacketization and FFmpeg decoding, Opus decoding, disconnect/reconnect, and a third streaming session with 2% loopback packet loss. Moonlight’s Debug build additionally enables its built-in video FEC synthetic-drop validation. Audio FEC recovery is required in the packet-loss run. The probe checks actual decoded frame/sample counts and invalid/FEC counters.
 
