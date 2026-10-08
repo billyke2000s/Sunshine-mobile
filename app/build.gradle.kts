@@ -6,8 +6,8 @@ android {
         applicationId = "dev.sunshinemobile"
         minSdk = 29
         targetSdk = 35
-        versionCode = 4
-        versionName = "1.0.2"
+        versionCode = 5
+        versionName = "1.0.3"
         testInstrumentationRunner = "androidx.test.runner.AndroidJUnitRunner"
         ndk { abiFilters += if(project.hasProperty("emulatorTests")) listOf("x86_64") else listOf("arm64-v8a") }
         externalNativeBuild { cmake { arguments += listOf("-DCMAKE_BUILD_TYPE=Release","-DANDROID_SUPPORT_FLEXIBLE_PAGE_SIZES=ON") } }

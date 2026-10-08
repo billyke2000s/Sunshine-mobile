@@ -21,7 +21,9 @@ class MainActivity : Activity() {
     private var projectionResult: Intent?=null
     private val observer: () -> Unit = {
         status.text=HostRuntime.status+"\nDiscovery: "+HostRuntime.discoveryStatus
-        addresses.text="Manual Moonlight address: "+localAddresses()
+        addresses.text=if(HostRuntime.lanAddress.isNotEmpty())
+            "Add PC in Moonlight: ${HostRuntime.lanAddress}\nLocal network: ${HostRuntime.networkStatus}"
+            else "Manual Moonlight address: "+localAddresses()
     }
     override fun onCreate(savedInstanceState: Bundle?) {
         super.onCreate(savedInstanceState)

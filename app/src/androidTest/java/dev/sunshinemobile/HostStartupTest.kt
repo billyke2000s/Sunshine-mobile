@@ -6,6 +6,8 @@ import androidx.test.ext.junit.runners.AndroidJUnit4
 import androidx.test.platform.app.InstrumentationRegistry
 import androidx.test.uiautomator.By
 import androidx.test.uiautomator.UiDevice
+import androidx.test.uiautomator.UiScrollable
+import androidx.test.uiautomator.UiSelector
 import androidx.test.uiautomator.Until
 import dev.sunshinemobile.protocol.Wire
 import org.junit.Assert.*
@@ -34,7 +36,13 @@ class HostStartupTest {
         fail("$description\n${HostRuntime.diagnostics()}")
     }
     private fun click(text: String) {
-        val button=device.wait(Until.findObject(By.text(Pattern.compile("(?i)"+Pattern.quote(text)))),10000)
+        val pattern="(?i)"+Pattern.quote(text)
+        var button=device.wait(Until.findObject(By.text(Pattern.compile(pattern))),3000)
+        if(button==null) {
+            device.wait(Until.hasObject(By.scrollable(true)),10000)
+            UiScrollable(UiSelector().scrollable(true)).scrollIntoView(UiSelector().textMatches(pattern))
+            button=device.wait(Until.findObject(By.text(Pattern.compile(pattern))),10000)
+        }
         val hierarchy=java.io.ByteArrayOutputStream()
         if(button==null) device.dumpWindowHierarchy(hierarchy)
         assertNotNull("Button missing: $text\n$hierarchy\n${HostRuntime.diagnostics()}",button)
@@ -51,6 +59,41 @@ class HostStartupTest {
         it.getOutputStream().write("GET $path HTTP/1.1\r\nHost: localhost\r\nConnection: close\r\n\r\n".toByteArray())
         it.getInputStream().bufferedReader().readText()
     }
+    @Suppress("DEPRECATION")
+    private fun discoverLikeMoonlight() {
+        val nsd=context.getSystemService(android.net.nsd.NsdManager::class.java)
+        val resolved=java.util.concurrent.atomic.AtomicReference<android.net.nsd.NsdServiceInfo>()
+        val error=java.util.concurrent.atomic.AtomicReference<String>()
+        val resolving=java.util.concurrent.atomic.AtomicBoolean()
+        val done=java.util.concurrent.CountDownLatch(1)
+        val listener=object : android.net.nsd.NsdManager.DiscoveryListener {
+            override fun onDiscoveryStarted(type: String)=Unit
+            override fun onDiscoveryStopped(type: String)=Unit
+            override fun onStopDiscoveryFailed(type: String,code: Int)=Unit
+            override fun onStartDiscoveryFailed(type: String,code: Int) { error.set("Discovery failed: $code"); done.countDown() }
+            override fun onServiceLost(info: android.net.nsd.NsdServiceInfo)=Unit
+            override fun onServiceFound(info: android.net.nsd.NsdServiceInfo) {
+                if(!info.serviceName.startsWith("Sunshine Mobile") || !resolving.compareAndSet(false,true)) return
+                nsd.resolveService(info,object : android.net.nsd.NsdManager.ResolveListener {
+                    override fun onResolveFailed(info: android.net.nsd.NsdServiceInfo,code: Int) { error.set("Resolution failed: $code");done.countDown() }
+                    override fun onServiceResolved(info: android.net.nsd.NsdServiceInfo) { resolved.set(info);done.countDown() }
+                })
+            }
+        }
+        val cm=context.getSystemService(android.net.ConnectivityManager::class.java)
+        assertNotNull("Host must bind its sockets to the LAN",cm.boundNetworkForProcess)
+        nsd.discoverServices("_nvstream._tcp.",android.net.nsd.NsdManager.PROTOCOL_DNS_SD,cm.boundNetworkForProcess,context.mainExecutor,listener)
+        try {
+            assertTrue("Moonlight-style discovery timed out\n${HostRuntime.diagnostics()}",done.await(25,java.util.concurrent.TimeUnit.SECONDS))
+            assertNull(error.get())
+            val info=resolved.get();assertNotNull(info)
+            assertEquals("Actual resolved SRV record must advertise the HTTP listener",47989,info.port)
+            val address=info.hostAddresses.firstOrNull { it is java.net.Inet4Address }
+            assertNotNull("Resolved service needs an IPv4 LAN address",address)
+            assertEquals(HostRuntime.lanAddress,address!!.hostAddress)
+            assertTrue(response(Socket(address,info.port),"/serverinfo").contains("<hostname>Sunshine Mobile</hostname>"))
+        } finally { nsd.stopServiceDiscovery(listener) }
+    }
     @Test fun hostSurvivesDeniedConsentThenCapturesAndRestarts() {
         device.executeShellCommand("pm grant ${context.packageName} android.permission.RECORD_AUDIO")
         device.executeShellCommand("pm grant ${context.packageName} android.permission.POST_NOTIFICATIONS")
@@ -61,7 +104,8 @@ class HostStartupTest {
             waitFor("Network host should start without projection") { HostRuntime.server!=null }
             assertFalse(HostRuntime.captureReady)
             assertTrue(response(Socket("127.0.0.1",47989),"/serverinfo").contains("<hostname>Sunshine Mobile</hostname>"))
-            waitFor("mDNS must advertise the Moonlight service") { HostRuntime.discoveryStatus.startsWith("Advertising") }
+            waitFor("mDNS must resolve the actual Moonlight service port") { HostRuntime.discoveryPort==47989 && HostRuntime.discoveryStatus.startsWith("Advertising") }
+            discoverLikeMoonlight()
             val identity=AndroidIdentity.load(context)
             val certificate=identity.certificate.encoded
             certificate.let { assertArrayEquals(it,AndroidIdentity.load(context).certificate.encoded) }
@@ -111,6 +155,7 @@ class HostStartupTest {
             assertTrue(HostRuntime.captureReady)
             click("Stop host")
             waitFor("Stop must clear the online host") { HostRuntime.server==null && !HostRuntime.captureReady }
+            assertNull(context.getSystemService(android.net.ConnectivityManager::class.java).boundNetworkForProcess)
             // Service cleanup is asynchronous. Wait for released network listeners.
             waitFor("HTTP port must close") { try { Socket("127.0.0.1",47989).close(); false } catch(_: Exception) { true } }
             click("Start host")

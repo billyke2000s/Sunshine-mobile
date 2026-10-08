@@ -28,6 +28,7 @@ class CaptureService : Service(), HostSession.Capture {
     private lateinit var handler: Handler
     private var discovery: GameStreamDiscovery? = null
     private var server: HostServer? = null
+    private var lan: LanNetwork? = null
     private var wake: PowerManager.WakeLock? = null
     private var wifi: android.net.wifi.WifiManager.WifiLock? = null
     private val stopping = java.util.concurrent.atomic.AtomicBoolean(false)
@@ -69,12 +70,18 @@ class CaptureService : Service(), HostSession.Capture {
             if(server==null) {
                 try {
                     HostRuntime.update("Loading persistent host certificate")
+                    if(lan==null) {
+                        lan=LanNetwork(this,handler) { network ->
+                            if(!stopping.get()) restartNetwork(network)
+                        }.also { it.start() }
+                    }
+                    check(lan?.selected!=null) { "Connect the phone to the TV's Wi-Fi or Ethernet network" }
                     val identity=AndroidIdentity.load(this)
                     HostRuntime.update("Opening GameStream HTTP, HTTPS and RTSP listeners")
                     server=HostServer(identity,this,{ HostRuntime.pairing(it) },{ HostRuntime.update(it) }).also { it.start() }
                     HostRuntime.server=server
                     HostRuntime.starting=false
-                    discovery=GameStreamDiscovery(this).also { it.start("Sunshine Mobile") }
+                    discovery=GameStreamDiscovery(this).also { it.start("Sunshine Mobile",lan?.selected) }
                     val manager=applicationContext.getSystemService(Context.WIFI_SERVICE) as android.net.wifi.WifiManager
                     wifi=manager.createWifiLock(android.net.wifi.WifiManager.WIFI_MODE_FULL_HIGH_PERF,"SunshineMobile:stream").apply { acquire() }
                     HostRuntime.update("Network host online — ready for Moonlight pairing")
@@ -116,6 +123,21 @@ class CaptureService : Service(), HostSession.Capture {
         return START_NOT_STICKY
     }
     override fun ready() = HostRuntime.captureReady && projection!=null && !stopping.get()
+    private fun restartNetwork(network: android.net.Network?) {
+        discovery?.stop(); discovery=null
+        server?.close(); server=null; HostRuntime.server=null; HostRuntime.pending=null
+        if(network==null) {
+            HostRuntime.discoveryStatus="Waiting for Wi-Fi/Ethernet"
+            HostRuntime.update("LAN disconnected — waiting for the TV's network")
+            return
+        }
+        try {
+            server=HostServer(AndroidIdentity.load(this),this,{ HostRuntime.pairing(it) },{ HostRuntime.update(it) }).also { it.start() }
+            HostRuntime.server=server
+            discovery=GameStreamDiscovery(this).also { it.start("Sunshine Mobile",network) }
+            HostRuntime.update("Host listening at ${HostRuntime.lanAddress}:47989 — ready to pair or reconnect")
+        } catch(e: Exception) { HostRuntime.fail("LAN listener restart failed",e) }
+    }
     private fun releaseProjection() {
         HostRuntime.captureReady=false
         releaseEncoder()
@@ -197,6 +219,7 @@ class CaptureService : Service(), HostSession.Capture {
     }
     override fun onDestroy() {
         stopping.set(true)
+        lan?.stop(); lan=null
         HostRuntime.starting=false; HostRuntime.captureReady=false
         HostRuntime.server=null; HostRuntime.pending=null
         try { discovery?.stop() } catch(_: Exception) {}
