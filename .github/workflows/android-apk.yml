@@ -11,6 +11,8 @@ concurrency:
 jobs:
   build:
     runs-on: ubuntu-24.04
+    env:
+      SUNSHINE_DEBUG_KEYSTORE: ${{ runner.temp }}/sunshine-debug.keystore
     steps:
       - uses: actions/checkout@v4
         with:
@@ -30,8 +32,13 @@ jobs:
       - name: Retain debug APK signing identity
         uses: actions/cache@v4
         with:
-          path: ~/.android/debug.keystore
-          key: sunshine-mobile-debug-signing-v1
+          path: ${{ env.SUNSHINE_DEBUG_KEYSTORE }}
+          key: sunshine-mobile-debug-signing-v2
+      - name: Prepare explicit debug signing identity
+        run: |
+          if [ ! -f "$SUNSHINE_DEBUG_KEYSTORE" ]; then
+            keytool -genkeypair -keystore "$SUNSHINE_DEBUG_KEYSTORE" -storetype JKS -storepass android -keypass android -alias androiddebugkey -keyalg RSA -keysize 2048 -validity 10000 -dname 'CN=Android Debug,O=Android,C=US'
+          fi
       - name: Compile debug APK
         run: gradle --no-daemon :app:assembleDebug :app:lintDebug :app:testDebugUnitTest
       - uses: actions/upload-artifact@v4

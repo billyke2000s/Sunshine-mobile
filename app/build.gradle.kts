@@ -17,6 +17,14 @@ android {
     compileOptions { sourceCompatibility = JavaVersion.VERSION_17; targetCompatibility = JavaVersion.VERSION_17 }
     kotlinOptions { jvmTarget = "17" }
     buildFeatures { buildConfig = true }
+    System.getenv("SUNSHINE_DEBUG_KEYSTORE")?.let { keystore ->
+        signingConfigs.getByName("debug") {
+            storeFile = file(keystore)
+            storePassword = "android"
+            keyAlias = "androiddebugkey"
+            keyPassword = "android"
+        }
+    }
 }
 
 dependencies {
