@@ -27,15 +27,19 @@ start_host() {
     for i in $(seq 1 50); do [ ! -f "$build_dir/ready" ] || return 0; sleep 0.1; done
     cat "$build_dir/host.log"; exit 1
 }
-trap 'if [ -n "${host_pid:-}" ]; then kill "$host_pid" 2>/dev/null || true; fi' EXIT
+trap 'if [ -n "${host_pid:-}" ]; then kill "$host_pid" 2>/dev/null || true; fi; if [ "${NETEM:-0}" = 1 ]; then sudo tc qdisc del dev lo root 2>/dev/null || true; fi' EXIT
 rm -f "$build_dir/client.der"
 start_host
 python3 "$project_dir/tools/protocol-test/client.py" "$build_dir" pair
 kill "$host_pid"; wait "$host_pid" || true
 start_host
-for iteration in 1 2; do
+iterations="1 2"
+if [ "${NETEM:-0}" = 1 ]; then iterations="1 2 3"; fi
+for iteration in $iterations; do
     python3 "$project_dir/tools/protocol-test/client.py" "$build_dir" launch
+    if [ "$iteration" = 3 ]; then sudo tc qdisc add dev lo root netem loss 2%; fi
     "$build_dir/probe" "$build_dir/received-$iteration.h264" "$iteration"
+    if [ "$iteration" = 3 ]; then sudo tc qdisc del dev lo root; fi
     ffmpeg -hide_banner -loglevel error -i "$build_dir/received-$iteration.h264" -f null -
     sleep 1
 done

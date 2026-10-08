@@ -36,9 +36,13 @@ int main(int argc,char**argv) {
     vr.setup=setup_video; vr.submitDecodeUnit=submit; vr.capabilities=CAPABILITY_DIRECT_SUBMIT;
     ar.init=init_audio; ar.decodeAndPlaySample=decode; ar.cleanup=cleanup_audio; ar.capabilities=CAPABILITY_DIRECT_SUBMIT;
     cl.stageFailed=stage_failed; cl.connectionTerminated=terminated; cl.logMessage=log_message;
+    RTP_AUDIO_STATS audioStats={0}; RTP_VIDEO_STATS videoStats={0};
     int result=LiStartConnection(&si,&sc,&cl,&vr,&ar,NULL,0,NULL,0);
-    if(result==0) { for(int i=0;i<80&&!atomic_load(&ended);i++) usleep(100000); LiStopConnection(); }
+    if(result==0) { for(int i=0;i<80&&!atomic_load(&ended);i++) usleep(100000); audioStats=*LiGetRTPAudioStats(); videoStats=*LiGetRTPVideoStats(); LiStopConnection(); }
     fclose(output);
     printf("Moonlight upstream: start=%d video_frames=%d opus_packets=%d\n",result,atomic_load(&frames),atomic_load(&audio));
+    printf("FEC: video_data=%u video_parity=%u audio_parity=%u audio_recovered=%u invalid_audio=%u invalid_audio_fec=%u\n",videoStats.packetCountVideo,videoStats.packetCountFec,audioStats.packetCountFec,audioStats.packetCountFecRecovered,audioStats.packetCountInvalid,audioStats.packetCountFecInvalid);
+    if(argc>2 && strcmp(argv[2],"3")==0 && audioStats.packetCountFecRecovered==0) return 1;
+    if(videoStats.packetCountFec==0 || audioStats.packetCountFec==0 || audioStats.packetCountInvalid || audioStats.packetCountFecInvalid) return 1;
     return result==0 && atomic_load(&frames)>=100 && atomic_load(&audio)>=300 ? 0:1;
 }

@@ -46,6 +46,8 @@ jobs:
         run: sudo apt-get update && sudo apt-get install -y cmake libssl-dev libopus-dev ffmpeg python3-cryptography
       - name: Test production host against upstream Moonlight
         run: tools/protocol-test/run.sh
+        env:
+          NETEM: '1'
       - uses: actions/upload-artifact@v4
         if: always()
         with:
