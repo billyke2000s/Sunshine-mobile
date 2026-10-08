@@ -5,6 +5,9 @@ on:
     branches: [main, master]
 permissions:
   contents: read
+concurrency:
+  group: sunshine-mobile-${{ github.ref }}
+  cancel-in-progress: true
 jobs:
   build:
     runs-on: ubuntu-24.04
@@ -39,6 +42,7 @@ jobs:
 
   android:
     runs-on: ubuntu-24.04
+    timeout-minutes: 25
     strategy:
       fail-fast: false
       matrix:
@@ -68,10 +72,10 @@ jobs:
           arch: x86_64
           target: google_apis
           disable-animations: true
-          script: gradle --no-daemon -PemulatorTests :app:connectedDebugAndroidTest
+          script: bash tools/android-test.sh
       - name: Capture Android logs
         if: always()
-        run: adb logcat -d > android-logcat.txt || true
+        run: timeout 15s "${ANDROID_HOME:-$ANDROID_SDK_ROOT}/platform-tools/adb" logcat -d >> android-logcat.txt || true
       - uses: actions/upload-artifact@v4
         if: always()
         with:
