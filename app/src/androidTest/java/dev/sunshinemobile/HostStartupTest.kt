@@ -34,8 +34,10 @@ class HostStartupTest {
         fail("$description\n${HostRuntime.diagnostics()}")
     }
     private fun click(text: String) {
-        val button=device.wait(Until.findObject(By.text(text)),10000)
-        assertNotNull("Button missing: $text\n${HostRuntime.diagnostics()}",button)
+        val button=device.wait(Until.findObject(By.text(Pattern.compile("(?i)"+Pattern.quote(text)))),10000)
+        val hierarchy=java.io.ByteArrayOutputStream()
+        if(button==null) device.dumpWindowHierarchy(hierarchy)
+        assertNotNull("Button missing: $text\n$hierarchy\n${HostRuntime.diagnostics()}",button)
         button.click()
     }
     private fun consent(approve: Boolean) {
