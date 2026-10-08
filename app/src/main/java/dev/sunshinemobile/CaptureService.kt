@@ -12,6 +12,7 @@ import android.media.projection.MediaProjection
 import android.media.projection.MediaProjectionManager
 import android.os.*
 import android.view.Surface
+import dev.sunshinemobile.protocol.Avc
 import dev.sunshinemobile.protocol.HostServer
 import dev.sunshinemobile.protocol.HostSession
 import java.util.concurrent.CountDownLatch
@@ -72,6 +73,8 @@ class CaptureService : Service(), HostSession.Capture {
                 setInteger(MediaFormat.KEY_COLOR_FORMAT,MediaCodecInfo.CodecCapabilities.COLOR_FormatSurface)
                 setInteger(MediaFormat.KEY_BIT_RATE,s.bitrate*1000)
                 setInteger(MediaFormat.KEY_FRAME_RATE,s.fps)
+                setFloat(MediaFormat.KEY_MAX_FPS_TO_ENCODER,s.fps.toFloat())
+                setLong(MediaFormat.KEY_REPEAT_PREVIOUS_FRAME_AFTER,1_000_000L/s.fps)
                 setInteger(MediaFormat.KEY_I_FRAME_INTERVAL,1)
                 setInteger(MediaFormat.KEY_PROFILE,MediaCodecInfo.CodecProfileLevel.AVCProfileHigh)
                 setInteger(MediaFormat.KEY_MAX_B_FRAMES,0)
@@ -86,7 +89,7 @@ class CaptureService : Service(), HostSession.Capture {
                 override fun onInputBufferAvailable(c: MediaCodec,index: Int) = Unit
                 override fun onOutputFormatChanged(c: MediaCodec,f: MediaFormat) {
                     config = listOfNotNull(f.getByteBuffer("csd-0"),f.getByteBuffer("csd-1")).flatMap { buffer ->
-                        val view=buffer.duplicate(); val bytes=ByteArray(view.remaining()); view.get(bytes); bytes.toList()
+                        val view=buffer.duplicate(); val bytes=ByteArray(view.remaining()); view.get(bytes); Avc.annexB(bytes).toList()
                     }.toByteArray()
                 }
                 override fun onError(c: MediaCodec,e: MediaCodec.CodecException) { if (active===s) s.fail("Encoder: ${e.diagnosticInfo}") }
@@ -96,9 +99,10 @@ class CaptureService : Service(), HostSession.Capture {
                         val buffer=c.getOutputBuffer(index) ?: return
                         val view=buffer.duplicate(); view.position(info.offset); view.limit(info.offset+info.size)
                         val bytes=ByteArray(info.size); view.get(bytes)
-                        if (info.flags and MediaCodec.BUFFER_FLAG_CODEC_CONFIG != 0) { config=bytes; return }
+                        if (info.flags and MediaCodec.BUFFER_FLAG_CODEC_CONFIG != 0) { config=Avc.annexB(bytes); return }
                         val key=info.flags and MediaCodec.BUFFER_FLAG_KEY_FRAME != 0
-                        val packet=if (key) config+bytes else bytes
+                        val annex = Avc.annexB(bytes)
+                        val packet=if (key) config+annex else annex
                         s.transport.video(packet,info.presentationTimeUs,key)
                     } catch (e: Exception) { if (active===s && !s.isClosed) s.fail("Video failed: ${e.message}") }
                     finally { try { c.releaseOutputBuffer(index,false) } catch (_: Exception) {} }

@@ -14,7 +14,8 @@ ffmpeg -hide_banner -loglevel error -f lavfi -i 'testsrc2=size=1280x720:rate=30'
 moonlight_dir="${MOONLIGHT_SOURCE:-$build_dir/moonlight}"
 if [ ! -d "$moonlight_dir/src" ]; then git clone --recursive https://github.com/moonlight-stream/moonlight-common-c.git "$moonlight_dir"; fi
 # Pin the independent client used to prove compatibility.
-git -C "$moonlight_dir" checkout f900dd4767759c7b9d0e93bcea666b55c69ea62f
+git -C "$moonlight_dir" fetch origin 874ac9548f1bd6f095ef2b435c42cdde460e7821
+git -C "$moonlight_dir" checkout 874ac9548f1bd6f095ef2b435c42cdde460e7821
 git -C "$moonlight_dir" submodule update --init --recursive
 cmake -S "$moonlight_dir" -B "$build_dir/moonlight-build" -DCMAKE_BUILD_TYPE=Debug -DBUILD_SHARED_LIBS=OFF
 cmake --build "$build_dir/moonlight-build" -j2
@@ -23,10 +24,10 @@ start_host() {
     rm -f "$build_dir/ready"
     java -Djava.library.path="$build_dir/native" -cp "$build_dir/classes" HostHarness "$build_dir" > "$build_dir/host.log" 2>&1 &
     host_pid=$!
-    for i in $(seq 1 50); do [ ! -f "$build_dir/ready" ] || return; sleep 0.1; done
+    for i in $(seq 1 50); do [ ! -f "$build_dir/ready" ] || return 0; sleep 0.1; done
     cat "$build_dir/host.log"; exit 1
 }
-trap 'kill "${host_pid:-0}" 2>/dev/null || true' EXIT
+trap 'if [ -n "${host_pid:-}" ]; then kill "$host_pid" 2>/dev/null || true; fi' EXIT
 rm -f "$build_dir/client.der"
 start_host
 python3 "$project_dir/tools/protocol-test/client.py" "$build_dir" pair
@@ -34,7 +35,7 @@ kill "$host_pid"; wait "$host_pid" || true
 start_host
 for iteration in 1 2; do
     python3 "$project_dir/tools/protocol-test/client.py" "$build_dir" launch
-    "$build_dir/probe" "$build_dir/received-$iteration.h264"
+    "$build_dir/probe" "$build_dir/received-$iteration.h264" "$iteration"
     ffmpeg -hide_banner -loglevel error -i "$build_dir/received-$iteration.h264" -f null -
     sleep 1
 done

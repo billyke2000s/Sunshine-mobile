@@ -49,7 +49,11 @@ public final class HostServer implements AutoCloseable {
             int total=0; String line; while((line=Wire.line(in,8192))!=null&&!line.isEmpty()) { total+=line.length(); if(total>16384) throw new IOException("Headers too large"); }
             URI uri=new URI(parts[1]); Map<String,String> q=query(uri.getRawQuery()); String path=uri.getPath();
             if("/serverinfo".equals(path)) { respond(s,serverInfo(s,tls)); return; }
-            if("/pair".equals(path)) { respond(s,pairing.handle(q,s.getInetAddress(),tls)); return; }
+            if("/pair".equals(path)) {
+                String result=pairing.handle(q,s.getInetAddress(),tls);
+                if(q.containsKey("clientpairingsecret")) status.accept(result.contains("<paired>1</paired>")?"Pairing complete — launch Phone screen in Moonlight":"Pairing rejected — retry from Moonlight");
+                respond(s,result); return;
+            }
             if("/unpair".equals(path) && !tls) { pairing.close(); respond(s,Wire.xml("<unpaired>1</unpaired>")); return; }
             if(!tls) { respond(s,Wire.error(401,"Use authenticated HTTPS")); return; }
             switch(path) {
@@ -74,7 +78,9 @@ public final class HostServer implements AutoCloseable {
         if(Integer.parseInt(q.getOrDefault("corever","0"))<1) return Wire.error(400,"Encrypted RTSP required");
         if((Integer.parseInt(q.getOrDefault("surroundAudioInfo","196610"))&65535)!=2) return Wire.error(400,"Stereo audio required");
         byte[] key=Wire.unhex(q.get("rikey")); int keyId=(int)Long.parseLong(q.get("rikeyid"));
-        session=new HostSession(s.getInetAddress(),owner,key,keyId,capture,reason->lifecycle.execute(()->{ HostSession current=session(); if(current!=null&&current.owner.equals(owner)) end(current,reason); }));
+        HostSession[] created=new HostSession[1];
+        created[0]=new HostSession(s.getInetAddress(),owner,key,keyId,capture,reason->{ try { lifecycle.execute(()->{ HostSession current=session(); if(current!=null&&current==created[0]) end(current,reason); }); } catch(RejectedExecutionException ignored) {} });
+        session=created[0];
         String url="rtspenc://"+s.getLocalAddress().getHostAddress()+":48010";
         status.accept("Moonlight negotiating");
         return Wire.xml((path.equals("/resume")?"<resume>1</resume>":"<gamesession>1</gamesession>")+"<sessionUrl0>"+Wire.escape(url)+"</sessionUrl0>");

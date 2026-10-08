@@ -45,7 +45,7 @@ public final class RtspServer implements AutoCloseable {
         try {
             switch(request[0]) {
                 case "OPTIONS": extra="Public: OPTIONS, DESCRIBE, SETUP, ANNOUNCE, PLAY, TEARDOWN\r\n"; break;
-                case "DESCRIBE": body="a=x-ss-general.featureFlags:0\r\na=x-ss-general.encryptionSupported:7\r\na=x-ss-general.encryptionRequested:1\r\na=x-nv-video[0].refPicInvalidation:0\r\na=rtpmap:97 opus/48000/2\r\n"; break;
+                case "DESCRIBE": body="a=x-ss-general.featureFlags:0\r\na=x-ss-general.encryptionSupported:7\r\na=x-ss-general.encryptionRequested:1\r\na=rtpmap:97 opus/48000/2\r\n"; break;
                 case "SETUP": {
                     String type=request[1].contains("=audio")?"audio":request[1].contains("=video")?"video":request[1].contains("=control")?"control":"";
                     if(type.isEmpty()) { code=404; break; } setup.add(type);

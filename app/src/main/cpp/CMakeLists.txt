@@ -13,7 +13,7 @@ add_library(nanors STATIC nanors/rs.c nanors/deps/obl/oblas_common.c nanors/deps
 target_include_directories(nanors PUBLIC nanors nanors/deps/obl)
 add_library(sunshine_transport SHARED transport.cpp)
 if(NOT ANDROID)
-    find_package(JNI REQUIRED)
+    find_package(JNI REQUIRED COMPONENTS JVM)
     target_include_directories(sunshine_transport PRIVATE ${JNI_INCLUDE_DIRS})
 endif()
 target_include_directories(sunshine_transport PRIVATE enet/include opus/include)

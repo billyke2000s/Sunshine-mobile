@@ -31,7 +31,7 @@ int main(int argc,char**argv) {
     SERVER_INFORMATION si; STREAM_CONFIGURATION sc; DECODER_RENDERER_CALLBACKS vr; AUDIO_RENDERER_CALLBACKS ar; CONNECTION_LISTENER_CALLBACKS cl;
     LiInitializeServerInformation(&si); LiInitializeStreamConfiguration(&sc); LiInitializeVideoCallbacks(&vr); LiInitializeAudioCallbacks(&ar); LiInitializeConnectionCallbacks(&cl);
     si.address="127.0.0.1"; si.serverInfoAppVersion="7.1.450.-1"; si.serverInfoGfeVersion="3.23.0.74"; si.rtspSessionUrl="rtspenc://127.0.0.1:48010"; si.serverCodecModeSupport=1;
-    sc.width=1280; sc.height=720; sc.fps=30; sc.bitrate=10000; sc.packetSize=1024; sc.streamingRemotely=STREAM_CFG_LOCAL; sc.audioConfiguration=AUDIO_CONFIGURATION_STEREO; sc.supportedVideoFormats=VIDEO_FORMAT_H264; sc.encryptionFlags=ENCFLG_ALL;
+    sc.width=1280; sc.height=720; sc.fps=30; sc.bitrate=10000; sc.packetSize=1024; sc.streamingRemotely=STREAM_CFG_LOCAL; sc.audioConfiguration=AUDIO_CONFIGURATION_STEREO; sc.supportedVideoFormats=VIDEO_FORMAT_H264; sc.encryptionFlags=argc>2&&strcmp(argv[2],"2")==0?ENCFLG_NONE:ENCFLG_ALL;
     unsigned char key[]={0x00,0x11,0x22,0x33,0x44,0x55,0x66,0x77,0x88,0x99,0xaa,0xbb,0xcc,0xdd,0xee,0xff}; memcpy(sc.remoteInputAesKey,key,16); sc.remoteInputAesIv[0]=0; sc.remoteInputAesIv[1]=0; sc.remoteInputAesIv[2]=0x30; sc.remoteInputAesIv[3]=0x39;
     vr.setup=setup_video; vr.submitDecodeUnit=submit; vr.capabilities=CAPABILITY_DIRECT_SUBMIT;
     ar.init=init_audio; ar.decodeAndPlaySample=decode; ar.cleanup=cleanup_audio; ar.capabilities=CAPABILITY_DIRECT_SUBMIT;
