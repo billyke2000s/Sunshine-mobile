@@ -3,3 +3,5 @@
 **/.cxx/
 local.properties
 *.log
+__pycache__/
+*.pyc

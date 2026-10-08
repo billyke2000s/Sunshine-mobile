@@ -5,13 +5,7 @@ import android.net.nsd.NsdManager
 import android.net.nsd.NsdServiceInfo
 import android.util.Log
 
-/**
- * Local network advertisement for a future GameStream-compatible host.
- *
- * This is deliberately NOT started until authenticated pairing and session
- * negotiation are implemented. Advertising a non-functional host would
- * mislead Moonlight clients.
- */
+/** LAN advertisement started only after all authenticated host listeners are ready. */
 class GameStreamDiscovery(context: Context) {
     private val nsd = context.applicationContext.getSystemService(Context.NSD_SERVICE) as NsdManager
     private var registration: NsdManager.RegistrationListener? = null
