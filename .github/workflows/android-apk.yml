@@ -24,6 +24,11 @@ jobs:
       - uses: gradle/actions/setup-gradle@v4
         with:
           gradle-version: '8.10.2'
+      - name: Retain debug APK signing identity
+        uses: actions/cache@v4
+        with:
+          path: ~/.android/debug.keystore
+          key: sunshine-mobile-debug-signing-v1
       - name: Compile debug APK
         run: gradle --no-daemon :app:assembleDebug :app:lintDebug :app:testDebugUnitTest
       - uses: actions/upload-artifact@v4
@@ -31,6 +36,50 @@ jobs:
           name: SunshineMobile-debug-apk
           path: app/build/outputs/apk/debug/*.apk
           if-no-files-found: error
+
+  android:
+    runs-on: ubuntu-24.04
+    strategy:
+      fail-fast: false
+      matrix:
+        api: [35, 36]
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          submodules: recursive
+      - uses: actions/setup-java@v5
+        with:
+          distribution: temurin
+          java-version: '17'
+      - uses: gradle/actions/setup-gradle@v4
+        with:
+          gradle-version: '8.10.2'
+      - name: Configure Android native build
+        run: sdkmanager 'platforms;android-35' 'build-tools;35.0.0' 'ndk;27.2.12479018' 'cmake;3.22.1'
+      - name: Enable KVM
+        run: |
+          echo 'KERNEL=="kvm", GROUP="kvm", MODE="0666", OPTIONS+="static_node=kvm"' | sudo tee /etc/udev/rules.d/99-kvm4all.rules
+          sudo udevadm control --reload-rules
+          sudo udevadm trigger --name-match=kvm
+      - name: Test Android startup, consent, TLS, capture and discovery
+        uses: reactivecircus/android-emulator-runner@v2
+        with:
+          api-level: ${{ matrix.api }}
+          arch: x86_64
+          target: google_apis
+          disable-animations: true
+          script: gradle --no-daemon -PemulatorTests :app:connectedDebugAndroidTest
+      - name: Capture Android logs
+        if: always()
+        run: adb logcat -d > android-logcat.txt || true
+      - uses: actions/upload-artifact@v4
+        if: always()
+        with:
+          name: android-evidence-${{ matrix.api }}
+          path: |
+            app/build/reports/androidTests/
+            app/build/outputs/androidTest-results/
+            android-logcat.txt
 
   protocol:
     runs-on: ubuntu-24.04

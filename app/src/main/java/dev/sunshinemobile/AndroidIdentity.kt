@@ -17,14 +17,16 @@ object AndroidIdentity {
     fun load(context: Context): HostIdentity {
         val prefs = context.getSharedPreferences("identity", Context.MODE_PRIVATE)
         val store = KeyStore.getInstance("AndroidKeyStore").apply { load(null) }
-        val alias = "sunshine-host-v1"
+        // Conscrypt delegates TLS RSA operations to the Keystore using pre-hashed
+        // messages. The v1 key omitted NONE, which can reject TLS authentication.
+        val alias = "sunshine-host-v2"
         if (!store.containsAlias(alias)) {
             KeyPairGenerator.getInstance(KeyProperties.KEY_ALGORITHM_RSA, "AndroidKeyStore").apply {
                 initialize(KeyGenParameterSpec.Builder(alias, KeyProperties.PURPOSE_SIGN or KeyProperties.PURPOSE_DECRYPT)
                     .setKeySize(2048)
-                    .setDigests(KeyProperties.DIGEST_SHA256, KeyProperties.DIGEST_SHA384, KeyProperties.DIGEST_SHA512)
-                    .setSignaturePaddings(KeyProperties.SIGNATURE_PADDING_RSA_PKCS1)
-                    .setEncryptionPaddings(KeyProperties.ENCRYPTION_PADDING_RSA_PKCS1)
+                    .setDigests(KeyProperties.DIGEST_NONE, KeyProperties.DIGEST_SHA256, KeyProperties.DIGEST_SHA384, KeyProperties.DIGEST_SHA512)
+                    .setSignaturePaddings(KeyProperties.SIGNATURE_PADDING_RSA_PKCS1, KeyProperties.SIGNATURE_PADDING_RSA_PSS)
+                    .setEncryptionPaddings(KeyProperties.ENCRYPTION_PADDING_NONE, KeyProperties.ENCRYPTION_PADDING_RSA_PKCS1)
                     .setCertificateSubject(X500Principal("CN=Sunshine Mobile"))
                     .setCertificateSerialNumber(BigInteger(1, dev.sunshinemobile.protocol.Wire.random(16)))
                     .setCertificateNotBefore(Date(0))

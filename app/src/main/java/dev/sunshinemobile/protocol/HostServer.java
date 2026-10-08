@@ -72,6 +72,7 @@ public final class HostServer implements AutoCloseable {
         finally { connections.remove(socket); }
     }
     private synchronized String launch(Map<String,String> q,Socket s,String owner,String path) throws Exception {
+        if(!capture.ready()) return Wire.error(503,"Enable screen sharing in Sunshine Mobile on the phone first");
         if(session!=null) return Wire.error(session.owner.equals(owner)?400:503,"Session already active");
         if(!"1".equals(q.getOrDefault("appid","1"))) return Wire.error(404,"Unknown app");
         if(!"0".equals(q.getOrDefault("hdrMode","0"))) return Wire.error(400,"SDR supported");

@@ -8,7 +8,7 @@ import java.util.concurrent.*;
 import java.util.concurrent.atomic.*;
 
 public final class HostSession implements AutoCloseable {
-    public interface Capture { void start(HostSession s); void stop(HostSession s); void requestIdr(); }
+    public interface Capture { void start(HostSession s); void stop(HostSession s); void requestIdr(); default boolean ready() { return true; } }
     public final InetAddress remote;
     public final String owner,ping=Wire.hex(Wire.random(8)),rtspId=Wire.hex(Wire.random(8));
     public final byte[] key;
