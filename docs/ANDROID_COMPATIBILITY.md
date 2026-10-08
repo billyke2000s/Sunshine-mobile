@@ -24,7 +24,7 @@ This audit covers the APIs used by this host on Android 10–16, with compile/ta
 
 ## Evidence
 
-The Android instrumentation suite runs on API 35 and 36. It exercises the actual activity Start button, system consent rejection/approval, foreground host startup, mDNS registration, HTTP discovery, Android Keystore signature and persistence, mutually authenticated TLS, launch gating before consent, native ENet/Opus, MediaProjection to MediaCodec frame production, cancel and service restart. Tests use a local trusted fixture peer; this does not replace the production pairing flow.
+[Actions run 37806436421](https://github.com/billyke2000s/Sunshine-mobile/actions/runs/37806436421), runtime commit `19baf1f63b0d09aaebd3b910496d934c1e4e5a35`, passed the arm64 APK build, lint/JVM checks, protocol test and both API 35/36 emulator jobs. The Android instrumentation suite runs on API 35 and 36. It exercises the actual activity Start button, system consent rejection/approval, foreground host startup, mDNS registration, HTTP discovery, Android Keystore signature and persistence, mutually authenticated TLS, launch gating before consent, native ENet/Opus, MediaProjection to MediaCodec frame production, cancel and service restart. Tests use a local trusted fixture peer; this does not replace the production pairing flow.
 
 The separate production protocol suite exercises generation-7 pairing and streaming against Moonlight Android's pinned, unchanged upstream native core, including encrypted negotiation/media, FEC loss recovery, authorization, reconnect and cancellation.
 

@@ -1,15 +1,17 @@
 # Sunshine Mobile
 
-Android screen-sharing GameStream host for a OnePlus 13R and an unmodified Moonlight Android/Android TV client. The production protocol implementation is tested against the client-core revision pinned by upstream Moonlight Android. Actual OnePlus capture, Android Keystore TLS integration, TV decoding, Wi-Fi discovery and performance still require physical-device verification.
+Android screen-sharing GameStream host for a OnePlus 13R and an unmodified Moonlight Android/Android TV client. The production protocol implementation is tested against the client-core revision pinned by upstream Moonlight Android. Android startup, Keystore TLS and screen capture are also exercised on Android 15/16 emulators. OnePlus-specific policy, TV decoding, LAN discovery and performance still require physical-device verification.
 
 ## Use
 
 1. Install the arm64 APK from the latest successful **Build Sunshine Mobile APK** Actions run.
-2. Open Sunshine Mobile, tap **Start host**, allow playback-audio capture, and approve Android screen-sharing consent. Choose the whole screen for mirroring other apps.
+2. Open Sunshine Mobile and tap **Start host**. Network discovery and pairing start independently of capture. Approve Android screen sharing to stream; audio and notification permissions are optional. If sharing is cancelled, use **Enable screen sharing** to retry.
 3. In Moonlight on the same LAN, select **Sunshine Mobile** (or add the phone’s IPv4 address manually), and start pairing.
-4. Enter the four-digit PIN displayed by Moonlight into Sunshine Mobile and tap **Approve pairing**.
+4. Tap **Approve pairing** in Sunshine Mobile and enter the four-digit PIN displayed by Moonlight into the temporary dialog.
 5. Launch **Phone screen** in Moonlight. Use H.264, SDR, stereo, and a resolution at or below 1920×1080, at up to 60 FPS. The host uses the actual RTSP-negotiated dimensions, rate and bitrate.
 6. Disconnect Moonlight to release the encoder and audio capture. The host remains available for a fresh connection without requiring another projection token. Stop the host from the app or notification to release projection and all listeners.
+
+The app displays its current LAN address, discovery state and startup errors. **Copy diagnostics** records the failing stage without PINs or keys. See [Android restrictions and host behavior](docs/ANDROID_COMPATIBILITY.md) for the researched platform/OEM boundaries. Earlier APKs have a different debug signing key and must be uninstalled before installing 1.0.2; remove the old host in Moonlight and pair again. Subsequent CI builds retain the signing key.
 
 This is screen mirroring. Remote phone touch/gamepad injection is not advertised. Android restricts capture of protected screens and audio from apps that disallow playback capture. Screen-sharing permission must be granted again after the service stops or the process dies; Android 14+ projection tokens cannot be silently reused.
 
@@ -28,7 +30,7 @@ All session control requires a paired certificate or the authenticated session k
 
 ## Validation
 
-The workflow compiles the arm64 APK, runs Android lint and JVM tests, and independently runs the **same production Java protocol classes and JNI transport** on Linux with synthetic capture against unmodified upstream Moonlight code.
+The workflow compiles the arm64 APK, runs Android lint and JVM tests, exercises startup/consent/mDNS/Keystore/mutual TLS/capture/restart on API 35 and 36 emulators, and independently runs the **same production Java protocol classes and JNI transport** on Linux with synthetic capture against unmodified upstream Moonlight code.
 
 The compatibility job checks wrong PIN rejection, out-of-order pairing, unauthenticated launch rejection, missing TLS certificate rejection, complete pairing, certificate persistence across a host-process restart, authenticated launch, encrypted RTSP/ENet negotiation, encrypted and plaintext media, H.264 depacketization and FFmpeg decoding, Opus decoding, disconnect/reconnect, and a third streaming session with 2% loopback packet loss. Moonlight’s Debug build additionally enables its built-in video FEC synthetic-drop validation. Audio FEC recovery is required in the packet-loss run. The probe checks actual decoded frame/sample counts and invalid/FEC counters.
 

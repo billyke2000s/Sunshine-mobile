@@ -9,20 +9,6 @@ concurrency:
   group: sunshine-mobile-${{ github.ref }}
   cancel-in-progress: true
 jobs:
-  cancel-stalled-tests:
-    # One-time cleanup of earlier runs whose post-emulator logcat waited forever.
-    if: github.run_number < 26
-    runs-on: ubuntu-24.04
-    permissions:
-      actions: write
-    steps:
-      - name: Cancel known superseded Android test runs
-        env:
-          GH_TOKEN: ${{ github.token }}
-          GH_REPO: ${{ github.repository }}
-        run: |
-          gh api --method POST "repos/$GH_REPO/actions/runs/37803479524/force-cancel" || true
-          gh api --method POST "repos/$GH_REPO/actions/runs/37803651958/force-cancel" || true
   build:
     runs-on: ubuntu-24.04
     steps:
