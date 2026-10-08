@@ -2,16 +2,18 @@ package dev.sunshinemobile
 
 import android.Manifest
 import android.app.Activity
+import android.app.AlertDialog
 import android.content.Intent
 import android.content.pm.PackageManager
 import android.media.projection.MediaProjectionManager
+import android.media.projection.MediaProjectionConfig
+import android.os.Build
 import android.os.Bundle
 import android.text.InputType
 import android.widget.*
 
 class MainActivity : Activity() {
     private lateinit var status: TextView
-    private lateinit var pin: EditText
     private val observer: () -> Unit = { status.text=HostRuntime.status }
     override fun onCreate(savedInstanceState: Bundle?) {
         super.onCreate(savedInstanceState)
@@ -29,12 +31,36 @@ class MainActivity : Activity() {
             if (android.os.Build.VERSION.SDK_INT>=33 && checkSelfPermission(Manifest.permission.POST_NOTIFICATIONS)!=PackageManager.PERMISSION_GRANTED) permissions.add(Manifest.permission.POST_NOTIFICATIONS)
             if (permissions.isNotEmpty()) requestPermissions(permissions.toTypedArray(),43) else captureConsent()
         } })
-        pin=EditText(this).apply { hint="4-digit PIN from Moonlight"; inputType=InputType.TYPE_CLASS_NUMBER or InputType.TYPE_NUMBER_VARIATION_PASSWORD; filters=arrayOf(android.text.InputFilter.LengthFilter(4)) }; layout.addView(pin)
         layout.addView(Button(this).apply { text="Approve pairing"; setOnClickListener {
             val pending=HostRuntime.pending
             if (pending==null) Toast.makeText(this@MainActivity,"Start pairing in Moonlight first",Toast.LENGTH_SHORT).show()
-            else if (!pin.text.toString().matches(Regex("[0-9]{4}"))) pin.error="Enter four digits"
-            else { HostRuntime.server?.pairing?.approve(pending.id,pin.text.toString()); pin.text.clear(); HostRuntime.pending=null; HostRuntime.update("Verifying pairing") }
+            else {
+                // This is a short-lived pairing code, not an account password. A persistent
+                // password input can make Android classify the entire host UI as sensitive.
+                val pin=EditText(this@MainActivity).apply {
+                    hint="4-digit PIN from Moonlight"
+                    inputType=InputType.TYPE_CLASS_NUMBER
+                    importantForAutofill=android.view.View.IMPORTANT_FOR_AUTOFILL_NO
+                    filters=arrayOf(android.text.InputFilter.LengthFilter(4))
+                }
+                val dialog=AlertDialog.Builder(this@MainActivity).setTitle("Pair Moonlight")
+                    .setMessage("Enter the code shown on your TV.").setView(pin)
+                    .setNegativeButton("Cancel",null).setPositiveButton("Approve",null).create()
+                dialog.setOnShowListener { dialog.getButton(AlertDialog.BUTTON_POSITIVE).setOnClickListener approve@{
+                    val code=pin.text.toString()
+                    if (!code.matches(Regex("[0-9]{4}"))) { pin.error="Enter four digits"; return@approve }
+                    if (HostRuntime.pending!==pending) {
+                        Toast.makeText(this@MainActivity,"Pairing request ended. Try again in Moonlight.",Toast.LENGTH_SHORT).show()
+                    } else {
+                        HostRuntime.server?.pairing?.approve(pending.id,code)
+                        HostRuntime.pending=null
+                        HostRuntime.update("Verifying pairing")
+                    }
+                    dialog.dismiss()
+                } }
+                dialog.setOnDismissListener { pin.text.clear() }
+                dialog.show()
+            }
         } })
         layout.addView(Button(this).apply { text="Stop host"; setOnClickListener { stopService(Intent(this@MainActivity,CaptureService::class.java)) } })
         layout.addView(Button(this).apply { text="Forget paired clients"; setOnClickListener {
@@ -45,7 +71,16 @@ class MainActivity : Activity() {
         layout.addView(TextView(this).apply { text="Android requires screen-sharing consent each time the host starts. Audio is captured only from apps that permit playback capture. Keep the phone unlocked for screen sharing." })
         setContentView(layout)
     }
-    private fun captureConsent() { @Suppress("DEPRECATION") startActivityForResult(getSystemService(MediaProjectionManager::class.java).createScreenCaptureIntent(),42) }
+    private fun captureConsent() {
+        val manager=getSystemService(MediaProjectionManager::class.java)
+        // Phone mirroring must follow app switches. Android 14+ otherwise defaults
+        // to offering a single task, which does not mirror the whole display.
+        val intent=if (Build.VERSION.SDK_INT>=34)
+            manager.createScreenCaptureIntent(MediaProjectionConfig.createConfigForDefaultDisplay())
+        else manager.createScreenCaptureIntent()
+        @Suppress("DEPRECATION")
+        startActivityForResult(intent,42)
+    }
     override fun onRequestPermissionsResult(requestCode: Int,permissions: Array<out String>,grantResults: IntArray) { super.onRequestPermissionsResult(requestCode,permissions,grantResults); if(requestCode==43) captureConsent() }
     @Deprecated("Activity result bridge")
     override fun onActivityResult(requestCode: Int,resultCode: Int,data: Intent?) {
