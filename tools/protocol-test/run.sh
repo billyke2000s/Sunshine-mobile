@@ -36,12 +36,14 @@ start_host
 iterations="1 2"
 if [ "${NETEM:-0}" = 1 ]; then iterations="1 2 3"; fi
 for iteration in $iterations; do
-    python3 "$project_dir/tools/protocol-test/client.py" "$build_dir" launch
+    python3 "$project_dir/tools/protocol-test/client.py" "$build_dir" launch "$iteration"
     if [ "$iteration" = 3 ]; then sudo tc qdisc add dev lo root netem loss 2%; fi
     "$build_dir/probe" "$build_dir/received-$iteration.h264" "$iteration"
     if [ "$iteration" = 3 ]; then sudo tc qdisc del dev lo root; fi
     ffmpeg -hide_banner -loglevel error -i "$build_dir/received-$iteration.h264" -f null -
     sleep 1
 done
+python3 "$project_dir/tools/protocol-test/client.py" "$build_dir" launch
+python3 "$project_dir/tools/protocol-test/client.py" "$build_dir" cancel
 cat "$build_dir/host.log"
 echo 'PASS: upstream Moonlight encrypted RTSP/ENet, H264 decode, Opus decode, reconnect after disconnect'

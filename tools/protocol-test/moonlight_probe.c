@@ -38,7 +38,7 @@ int main(int argc,char**argv) {
     cl.stageFailed=stage_failed; cl.connectionTerminated=terminated; cl.logMessage=log_message;
     RTP_AUDIO_STATS audioStats={0}; RTP_VIDEO_STATS videoStats={0};
     int result=LiStartConnection(&si,&sc,&cl,&vr,&ar,NULL,0,NULL,0);
-    if(result==0) { for(int i=0;i<80&&!atomic_load(&ended);i++) usleep(100000); audioStats=*LiGetRTPAudioStats(); videoStats=*LiGetRTPVideoStats(); LiStopConnection(); }
+    if(result==0) { for(int i=0;i<120&&!atomic_load(&ended);i++) usleep(100000); audioStats=*LiGetRTPAudioStats(); videoStats=*LiGetRTPVideoStats(); LiStopConnection(); }
     fclose(output);
     printf("Moonlight upstream: start=%d video_frames=%d opus_packets=%d\n",result,atomic_load(&frames),atomic_load(&audio));
     printf("FEC: video_data=%u video_parity=%u audio_parity=%u audio_recovered=%u invalid_audio=%u invalid_audio_fec=%u\n",videoStats.packetCountVideo,videoStats.packetCountFec,audioStats.packetCountFec,audioStats.packetCountFecRecovered,audioStats.packetCountInvalid,audioStats.packetCountFecInvalid);

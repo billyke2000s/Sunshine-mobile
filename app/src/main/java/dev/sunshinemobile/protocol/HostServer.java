@@ -54,7 +54,7 @@ public final class HostServer implements AutoCloseable {
                 if(q.containsKey("clientpairingsecret")) status.accept(result.contains("<paired>1</paired>")?"Pairing complete — launch Phone screen in Moonlight":"Pairing rejected — retry from Moonlight");
                 respond(s,result); return;
             }
-            if("/unpair".equals(path) && !tls) { pairing.close(); respond(s,Wire.xml("<unpaired>1</unpaired>")); return; }
+            if("/unpair".equals(path) && !tls) { pairing.cancel(q.get("uniqueid"),s.getInetAddress()); respond(s,Wire.xml("<unpaired>1</unpaired>")); return; }
             if(!tls) { respond(s,Wire.error(401,"Use authenticated HTTPS")); return; }
             switch(path) {
                 case "/applist": respond(s,Wire.xml("<App><AppTitle>Phone screen</AppTitle><ID>1</ID><IsHdrSupported>0</IsHdrSupported></App>")); break;

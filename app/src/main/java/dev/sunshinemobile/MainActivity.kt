@@ -18,6 +18,9 @@ class MainActivity : Activity() {
         val layout=LinearLayout(this).apply { orientation=LinearLayout.VERTICAL; setPadding(32,64,32,32) }
         layout.addView(TextView(this).apply { text="Sunshine Mobile"; textSize=28f })
         layout.addView(TextView(this).apply { text="Share this phone with Moonlight on your TV. Start the host, pair in Moonlight, then enter the TV’s PIN here. Launch Phone screen.\n\nH.264 SDR • up to 1080p60 • stereo audio"; textSize=16f })
+        val addresses = java.util.Collections.list(java.net.NetworkInterface.getNetworkInterfaces()).flatMap { java.util.Collections.list(it.inetAddresses) }
+            .filter { it is java.net.Inet4Address && !it.isLoopbackAddress }.joinToString(" • ") { it.hostAddress ?: "" }
+        layout.addView(TextView(this).apply { text="Manual Moonlight address: $addresses" })
         status=TextView(this).apply { textSize=18f; setPadding(0,24,0,24) }; layout.addView(status)
         layout.addView(Button(this).apply { text="Start host"; setOnClickListener {
             if (HostRuntime.server!=null) return@setOnClickListener

@@ -70,5 +70,8 @@ public final class Pairing implements AutoCloseable {
         }
     }
     private void expire() { if(attempt!=null && attempt.expires<System.nanoTime()) { attempt.pending.pin.cancel(false); attempt=null; } }
+    public synchronized void cancel(String id,InetAddress remote) {
+        if(attempt!=null && attempt.id.equals(id) && attempt.address.equals(remote.getHostAddress())) { attempt.pending.pin.cancel(false); attempt=null; }
+    }
     public synchronized void close() { if(attempt!=null) attempt.pending.pin.cancel(false); attempt=null; }
 }
