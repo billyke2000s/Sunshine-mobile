@@ -12,6 +12,8 @@ import android.view.Surface
 
 class CaptureService : Service() {
  private val videoPipeline = EncodedVideoPipeline()
+ private var controlServer: GameStreamHttpServer? = null
+ private var discovery: GameStreamDiscovery? = null
  private var projection: MediaProjection? = null
  private var codec: MediaCodec? = null
  private var surface: Surface? = null
@@ -42,6 +44,11 @@ class CaptureService : Service() {
    }
    codec = MediaCodec.createEncoderByType(MediaFormat.MIMETYPE_VIDEO_AVC).apply { configure(format,null,null,MediaCodec.CONFIGURE_FLAG_ENCODE); surface = createInputSurface(); start() }
    display = projection?.createVirtualDisplay("SunshineMobileCapture",width,height,metrics.densityDpi,DisplayManager.VIRTUAL_DISPLAY_FLAG_AUTO_MIRROR,surface,null,null)
+   val hostId = getSharedPreferences("host", MODE_PRIVATE).let { prefs ->
+    prefs.getString("uuid", null) ?: java.util.UUID.randomUUID().toString().also { prefs.edit().putString("uuid", it).apply() }
+   }
+   controlServer = GameStreamHttpServer("Sunshine Mobile", hostId).also { it.start() }
+   discovery = GameStreamDiscovery(this).also { it.start("Sunshine Mobile") }
    running.set(true)
    thread = Thread {
     val info = MediaCodec.BufferInfo()
@@ -62,7 +69,11 @@ class CaptureService : Service() {
   return START_NOT_STICKY
  }
  override fun onDestroy() {
-  running.set(false); display?.release(); display=null; surface?.release(); surface=null
+  running.set(false)
+  try { discovery?.stop() } catch (_: Exception) {}
+  discovery = null
+  controlServer?.stop(); controlServer = null
+  display?.release(); display=null; surface?.release(); surface=null
   try { codec?.stop() } catch (_: Exception) {}
   codec?.release(); codec=null; projection?.stop(); projection=null
   super.onDestroy()
