@@ -1,0 +1,9 @@
+[submodule "app/src/main/cpp/enet"]
+	path = app/src/main/cpp/enet
+	url = https://github.com/cgutman/enet.git
+[submodule "app/src/main/cpp/opus"]
+	path = app/src/main/cpp/opus
+	url = https://github.com/xiph/opus.git
+[submodule "app/src/main/cpp/nanors"]
+	path = app/src/main/cpp/nanors
+	url = https://github.com/sleepybishop/nanors.git

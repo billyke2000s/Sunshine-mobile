@@ -1,0 +1,2 @@
+Sunshine Mobile implements GameStream protocols with reference to LizardByte Sunshine (GPL-3.0) and moonlight-stream/moonlight-common-c (GPL-3.0).
+Native dependencies are pinned Git submodules: cgutman/enet (MIT), xiph/opus (BSD), sleepybishop/nanors (BSD). Their licenses are retained in their source directories.
